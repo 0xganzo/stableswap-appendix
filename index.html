@@ -1,134 +1,567 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width" />
-  <title>Stableswap Appendix</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HFMM Simulator | Research Appendix</title>
+    <style>
+        :root {
+            /* Fintech Palette */
+            --bg-app: #f8fafc;
+            --surface: #ffffff;
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --text-main: #0f172a;
+            --text-sec: #64748b;
+            --border: #cbd5e1;
+            --green: #10b981;
+            --red: #ef4444;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
 
-  <h1>Exploration of Different Automated Market Makers</h1>
-  <p><em>Author: Zhi Xin Tay, <a href="mailto:alextayzhixin@gmail.com">alextayzhixin@gmail.com</em></a>
-  </p>
-  <h3>A quick appendix for understanding the algorithm of stableswap in automated market maker (AMM) decentralised
-    exchange (DEX).</h3>
-  <h4><em>For an ongoing research publication.</em>
-  </h4>
-  <hr>
-  <link href="style.css" rel="stylesheet">
-  <script src="https://www.desmos.com/api/v1.7/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
+        html, body { height: 100%; width: 100%; margin: 0; padding: 0; }
+        
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--bg-app);
+            color: var(--text-main);
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* --- Sidebar --- */
+        aside {
+            width: 420px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            z-index: 20;
+            box-shadow: var(--shadow);
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            background: #fff;
+        }
+        
+        h1 { font-size: 1.2rem; margin: 0; font-weight: 800; letter-spacing: -0.5px; line-height: 1.2; }
+        h1 span { color: var(--primary); }
+        .subtitle { font-size: 0.75rem; color: var(--text-sec); margin-top: 5px; font-weight: 500; }
+
+        .scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        /* --- References Section --- */
+        .credits-box {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            font-size: 0.75rem;
+            color: var(--text-sec);
+        }
+        .credits-box h4 { margin: 0 0 8px 0; color: var(--text-main); font-size: 0.8rem; }
+        .credits-box p { margin: 0 0 6px 0; line-height: 1.4; }
+        .credits-box a { color: var(--primary); text-decoration: none; }
+        .credits-box a:hover { text-decoration: underline; }
+
+        /* --- Cards & Inputs --- */
+        .card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        
+        .card-title {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--text-sec);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .control-row { margin-bottom: 16px; }
+        .label-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .label-flex label { font-weight: 600; font-size: 0.85rem; }
+        .input-flex { display: flex; align-items: center; gap: 10px; }
+
+        input[type="number"], input[type="text"] {
+            width: 85px;
+            padding: 5px 8px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-weight: 600;
+            text-align: right;
+            color: var(--primary);
+            font-size: 0.9rem;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            -webkit-appearance: none;
+            height: 5px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border: 2px solid var(--primary);
+            border-radius: 50%;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            margin-top: -5px;
+            transition: transform 0.1s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); background: var(--primary); }
+
+        /* --- Trade Box --- */
+        .trade-box {
+            background: #f1f5f9;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+        }
+        .trade-explainer {
+            margin-top: 12px;
+            padding: 10px;
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 0.8rem;
+            line-height: 1.5;
+            color: var(--text-main);
+        }
+        .t-buy { color: var(--green); font-weight: 700; }
+        .t-sell { color: var(--red); font-weight: 700; }
+        .t-val { font-family: var(--font-mono); font-weight: 600; }
+        .t-neutral { color: var(--text-sec); font-style: italic; }
+        .range-hint { display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-sec); margin-top: 4px; }
+
+        /* --- Stats --- */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+        .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; }
+        .stat-title { font-size: 0.65rem; color: var(--text-sec); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .stat-value { font-family: var(--font-mono); font-size: 1.1rem; font-weight: 700; color: var(--text-main); }
+        .stat-sub { font-size: 0.7rem; margin-top: 2px; color: var(--text-sec); }
+
+        /* --- Main Canvas Area --- */
+        main { flex: 1; background: #ffffff; position: relative; display: flex; flex-direction: column; min-width: 0; }
+        #canvas-container { flex: 1; position: relative; overflow: hidden; min-height: 0; }
+        canvas { display: block; width: 100%; height: 100%; outline: none; }
+
+        .graph-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+            z-index: 30;
+        }
+        .btn-icon {
+            width: 32px; height: 32px; border-radius: 50%; background: white; border: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            box-shadow: var(--shadow); color: var(--text-sec); font-size: 1.1rem; transition: all 0.2s; user-select: none;
+        }
+        .btn-icon:hover { color: var(--primary); border-color: var(--primary); transform: translateY(-2px); }
+
+        #tooltip {
+            position: absolute; background: rgba(15, 23, 42, 0.9); color: white; padding: 6px 10px;
+            border-radius: 4px; font-family: var(--font-mono); font-size: 0.75rem; pointer-events: none;
+            opacity: 0; transform: translate(-50%, -130%); transition: opacity 0.1s; white-space: nowrap;
+            z-index: 100; box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+    </style>
 </head>
-
 <body>
-  <main>
-    <h2>Understanding Stableswap</h2>
-    <p>The different AMM models deployed by different protocols. The equations are as shown, feel free to tweak the
-      value for <abbr title="Amplification factor"><em>A</em></abbr> and <abbr
-        title="Total number of tokens (Number of Token A + Number of Token B)"><em>D</em></abbr> to observe the shape of
-      respective curves.
-    </p>
-    <div class="container">
-      <div id="calculator" style="width:800px; height: 600px">
-        <script>
-          var elt = document.getElementById('calculator');
-          var calculator = Desmos.GraphingCalculator(elt);
-          calculator.setExpression({
-            id: 'linear_invariant',
-            latex: 'x+y=D',
-            color: 'red'
-          });
-          calculator.setExpression({
-            id: 'uniswap_invariant',
-            latex: 'x*y=(D/2)^2',
-            color: 'blue'
-          });
-          calculator.setExpression({
-            id: 'stableswap_invariant',
-            latex: '4Ax+4Ay + D - 4AD - (D^3)/(4xy) = 0',
-            color: 'purple'
-          });
-          calculator.setExpression({
-            id: 'A',
-            latex: 'A=10',
-            sliderBounds: {min: 1, max: 1000, step: 1}
-          });
-          calculator.setExpression({
-            id: 'D',
-            latex: 'D=10000',
-            sliderBounds: {min: 1, max: 100000, step: 1}
-          });
-          calculator.setMathBounds({
-            left: 0,
-            right: 15000,
-            bottom: 0,
-            top: 15000
-          });
-        </script>
-      </div>
-      <br />
-      <div>
-        <div class='box red'></div>&nbsp;Linear invariant (Constant Sum Automated Market Maker <em>[x+y=k]</em>, CSMM)
-      </div>
-      <br>
-      <div>
-        <div class='box blue'></div>&nbsp;Uniswap invariant (Constant Product Automated Market Maker <em>[x*y=k]</em>,
-        CPMM)
-      </div>
-      <br>
-      <div>
-        <div class='box purple'></div>&nbsp;Stableswap invariant (Hybrid Function Automated Market Maker, HFMM)
-      </div>
+
+<aside>
+    <div class="sidebar-header">
+        <h1>HFMM <span>Simulator</span></h1>
+        <div class="subtitle">Experimental proposed peer-to-peer electricity trading scheme for the context of Malaysia</div>
     </div>
-    <div>
-      <br />
-      <hr />
-      <h2>Mock Swap Stimulator</h2>
-      <p>
-        Estimating swap amount based on <strong>amplification coefficient <abbr
-            title="Amplification factor"><em>(A)</em></abbr></strong>, <strong>total number of tokens <abbr
-            title="Total number of tokens (Number of Token A + Number of Token B)"><em>(D)</em></abbr></strong> and
-        <strong>0.05% swap fee</strong>:
-      </p>
-    </div>
-    <div id="sliders">
-      <div class="slider aSlider">
-        <label>
-          <div><abbr title="Amplification factor"><em>A</em></abbr> coefficient: <span id="ACoeffValue"
-              class="tokenValue"></span></div>
-        </label>
-        <div class="sliderContainer">0 <input id="ACoeffSlider" type="range" step="1" min="-10" max="30" value="30">
-          10,000</div>
-      </div>
-      <div id="tokenSliders">
-        <div class="slider">
-          <label>
-            <div>
-              Token <span class="name">A</span> supply: <span class="tokenValue"></span>
+
+    <div class="scroll-area">
+        
+        <!-- 1. PARAMETERS -->
+        <div class="card">
+            <span class="card-title">1. Protocol Configuration</span>
+            <div class="control-row">
+                <div class="label-flex">
+                    <label>Total Liquidity (D)</label>
+                </div>
+                <div class="input-flex">
+                    <input type="range" id="slider-d" min="100" max="20000" step="1">
+                    <input type="number" id="input-d" value="6050.4" step="0.1">
+                </div>
             </div>
-          </label>
-          <div class="sliderContainer">0 <input class="tokenSlider" type="range" step="1" min="-10" max="50" value="30">
-            1,000,000</div>
+            <div class="control-row">
+                <div class="label-flex">
+                    <label>Amplification (A)</label>
+                </div>
+                <div class="input-flex">
+                    <input type="range" id="slider-a" min="1" max="500" step="1">
+                    <input type="number" id="input-a" value="25">
+                </div>
+            </div>
         </div>
-        <div class="slider">
-          <label>
-            <div>Token <span class="name">B</span> supply: <span class="tokenValue"></span></div>
-          </label>
-          <div class="sliderContainer">0 <input class="tokenSlider" type="range" step="1" min="-10" max="50" value="30">
-            1,000,000</div>
+
+        <!-- 2. TRADING -->
+        <div class="card">
+            <div class="label-flex">
+                <span class="card-title" style="margin:0">2. Order Execution</span>
+                <button onclick="UI.resetTrade()" style="background:none; border:none; color:var(--primary); cursor:pointer; font-size:0.75rem; font-weight:600;">Reset</button>
+            </div>
+            <div class="trade-box" style="margin-top:12px;">
+                <div class="label-flex">
+                    <label style="font-size:0.85rem;">Trade Amount (Δ)</label>
+                    <span style="font-size:0.75rem; color:var(--text-sec);">(- Buy / + Sell)</span>
+                </div>
+                <div class="input-flex">
+                    <input type="range" id="slider-trade">
+                    <input type="number" id="input-trade" placeholder="0.0" step="0.1">
+                </div>
+                <div class="range-hint">
+                    <span id="lbl-buy-max">Max Buy</span>
+                    <span id="lbl-sell-max">Max Sell</span>
+                </div>
+                <div class="trade-explainer" id="trade-sentence">
+                    <span class="t-neutral">Market Equilibrium.<br>Pool is balanced.</span>
+                </div>
+            </div>
         </div>
-      </div>
+
+        <!-- 3. ANALYTICS -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-title">Spot Price</div>
+                <div class="stat-value" style="color:var(--primary)" id="val-price">0.2870</div>
+                <div class="stat-sub">RM / kWh</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Slippage</div>
+                <div class="stat-value" id="val-slip">0.00%</div>
+                <div class="stat-sub">Price Impact</div>
+            </div>
+        </div>
+
+        <!-- REFERENCES / CREDITS -->
+        <div class="credits-box">
+            <h4>Research & Authorship</h4>
+            <p><strong>Author:</strong> Zhi Xin Tay (<a href="mailto:alextayzhixin@gmail.com">alextayzhixin@gmail.com</a>)</p>
+            <p><em>Upgraded interactive implementation of "Stableswap Appendix" for the publication: "A Peer-to-peer Energy Trading Market Framework in Malaysia".</em></p>
+            <p style="margin-top:8px; font-style:italic; font-size:0.7rem;">
+                Math Logic based on Stableswap Invariant (Eq. 7).<br>
+                Ref: <a href="https://miguelmota.com/blog/understanding-stableswap-curve/" target="_blank">Miguel Mota's Understanding StableSwap</a>
+            </p>
+        </div>
+
     </div>
-    <div class="estimate"><br />
-      Swapping <input id="tokenSellSlider" type="text" value="1000"> <select id="tokenIn"></select> for <select
-        id="tokenOut"></select> will give you <span id="amountOut"></span>, at a price of <span id="price"></span>.
+</aside>
+
+<main>
+    <div id="canvas-container">
+        <canvas id="mainGraph"></canvas>
+        <div id="tooltip"></div>
+        
+        <div class="graph-controls">
+            <div class="btn-icon" onclick="Graph.fit()" title="Reset View">⟲</div>
+            <div class="btn-icon" onclick="Graph.zoom(0.9)" title="Zoom In">+</div>
+            <div class="btn-icon" onclick="Graph.zoom(1.1)" title="Zoom Out">-</div>
+        </div>
     </div>
-    <hr />
-    <script src="main.js"></script>
-  </main>
-  <footer>
-    <p><em>Reference: <a href="https://miguelmota.com/blog/understanding-stableswap-curve/">Miguel Mota's Understanding
-          StableSwap (Curve)</a></em></p>
-  </footer>
+</main>
+
+<script>
+/**
+ * HFMM Math Core (Eq 7: 4A(x+y) + D = 4AD + D^3/4xy)
+ */
+const MathCore = {
+    solveY(x, A, D) {
+        if (x <= 0.001) return 0; 
+        const coef_a = 4 * A;
+        const coef_b = (4 * A * x) + D - (4 * A * D);
+        const coef_c = -1 * Math.pow(D, 3) / (4 * x);
+        const delta = (coef_b * coef_b) - (4 * coef_a * coef_c);
+        if (delta < 0) return 0;
+        return (-coef_b + Math.sqrt(delta)) / (2 * coef_a);
+    },
+
+    getSpotPrice(x, y, A, D, basePeg = 0.287) {
+        if (x <= 0 || y <= 0) return 9999;
+        const numerator = y * ( (16 * A * x * x * y) + Math.pow(D, 3) );
+        const denominator = x * ( (16 * A * x * y * y) + Math.pow(D, 3) );
+        return (numerator / denominator) * basePeg;
+    }
+};
+
+/**
+ * Application State
+ */
+const App = {
+    state: {
+        D: 6050.4,
+        A: 25,
+        tradeDelta: 0,
+        initX: 3025.2,
+        X: 3025.2,
+        Y: 3025.2,
+        price: 0.287
+    }
+};
+
+/**
+ * Graph Engine (Canvas)
+ */
+const Graph = {
+    canvas: document.getElementById('mainGraph'),
+    ctx: null,
+    width: 0, height: 0,
+    scale: 1, panX: 60, panY: 60, baseScale: 1,
+    isDragging: false, lastX: 0, lastY: 0,
+
+    init() {
+        this.ctx = this.canvas.getContext('2d');
+        this.resize();
+        window.addEventListener('resize', () => { this.resize(); this.draw(); });
+        this.canvas.addEventListener('mousedown', e => {
+            this.isDragging = true; this.lastX = e.clientX; this.lastY = e.clientY;
+            this.canvas.style.cursor = 'grabbing';
+        });
+        window.addEventListener('mousemove', e => {
+            this.handleTooltip(e);
+            if (!this.isDragging) return;
+            this.panX += e.clientX - this.lastX; this.panY += e.clientY - this.lastY;
+            this.lastX = e.clientX; this.lastY = e.clientY;
+            this.draw();
+        });
+        window.addEventListener('mouseup', () => {
+            this.isDragging = false; this.canvas.style.cursor = 'crosshair';
+        });
+        setTimeout(() => this.fit(), 50);
+    },
+
+    resize() {
+        const container = this.canvas.parentElement;
+        if (!container) return;
+        const w = container.clientWidth || 600; 
+        const h = container.clientHeight || 400;
+        const dpr = window.devicePixelRatio || 1;
+        this.width = w; this.height = h;
+        this.canvas.width = w * dpr; this.canvas.height = h * dpr;
+        this.ctx.scale(dpr, dpr);
+    },
+
+    fit() {
+        const target = App.state.D * 1.3;
+        const margin = 60;
+        const minDim = Math.max(100, Math.min(this.width, this.height) - (margin * 2));
+        this.baseScale = minDim / target; this.scale = 1;
+        this.panX = margin; this.panY = this.height - margin;
+        this.draw();
+    },
+
+    zoom(factor) { this.scale /= factor; this.draw(); },
+    toScreen(x, y) {
+        const s = this.baseScale * this.scale;
+        return { x: this.panX + (x * s), y: this.panY - (y * s) };
+    },
+
+    draw() {
+        if (!this.ctx) return;
+        const ctx = this.ctx;
+        const { D, A, X, Y } = App.state;
+        ctx.clearRect(0, 0, this.width, this.height);
+
+        // 1. Grid
+        ctx.beginPath(); ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2;
+        ctx.moveTo(0, this.panY); ctx.lineTo(this.width, this.panY);
+        ctx.moveTo(this.panX, 0); ctx.lineTo(this.panX, this.height);
+        ctx.stroke();
+
+        // Labels
+        ctx.fillStyle = '#64748b'; ctx.font = '11px Segoe UI';
+        ctx.textAlign = 'right'; ctx.fillText("ElecToken (X)", this.width - 20, this.panY - 10);
+        ctx.save(); ctx.translate(this.panX + 20, 20); ctx.textAlign = 'left';
+        ctx.fillText("MyrToken (Y)", 0, 0); ctx.restore();
+
+        // 2. Curve
+        ctx.beginPath(); ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+        const range = Math.max(D * 1.5, X * 1.2); const steps = 400; let first = true;
+        for(let i=1; i<=steps; i++) {
+            const vx = (i/steps) * range;
+            if (vx < 0.1) continue;
+            const vy = MathCore.solveY(vx, A, D);
+            const pos = this.toScreen(vx, vy);
+            if (pos.x < -1000 || pos.x > this.width + 1000 || pos.y < -1000 || pos.y > this.height + 1000) { first = true; continue; }
+            if (first) { ctx.moveTo(pos.x, pos.y); first = false; } else { ctx.lineTo(pos.x, pos.y); }
+        }
+        ctx.stroke();
+
+        // 3. Position
+        const pt = this.toScreen(X, Y);
+        ctx.beginPath(); ctx.strokeStyle = '#94a3b8'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
+        ctx.moveTo(pt.x, pt.y); ctx.lineTo(pt.x, this.panY);
+        ctx.moveTo(pt.x, pt.y); ctx.lineTo(this.panX, pt.y);
+        ctx.stroke(); ctx.setLineDash([]);
+
+        ctx.beginPath(); ctx.fillStyle = '#ef4444';
+        ctx.arc(pt.x, pt.y, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+    },
+
+    handleTooltip(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left; const my = e.clientY - rect.top;
+        const pt = this.toScreen(App.state.X, App.state.Y);
+        const dist = Math.hypot(mx - pt.x, my - pt.y);
+        const el = document.getElementById('tooltip');
+        if (dist < 20) {
+            el.style.opacity = 1; el.style.left = `${mx}px`; el.style.top = `${my}px`;
+            el.innerHTML = `X: ${App.state.X.toFixed(1)}<br>Y: ${App.state.Y.toFixed(1)}`;
+            this.canvas.style.cursor = 'pointer';
+        } else {
+            el.style.opacity = 0; if (!this.isDragging) this.canvas.style.cursor = 'crosshair';
+        }
+    }
+};
+
+/**
+ * UI Controller
+ */
+const UI = {
+    el: {
+        inputD: document.getElementById('input-d'), sliderD: document.getElementById('slider-d'),
+        inputA: document.getElementById('input-a'), sliderA: document.getElementById('slider-a'),
+        inputTrade: document.getElementById('input-trade'), sliderTrade: document.getElementById('slider-trade'),
+        lblBuyMax: document.getElementById('lbl-buy-max'), lblSellMax: document.getElementById('lbl-sell-max'),
+        tradeText: document.getElementById('trade-sentence'),
+        price: document.getElementById('val-price'), slip: document.getElementById('val-slip')
+    },
+
+    init() {
+        this.updateD(App.state.D);
+        this.updateA(App.state.A);
+        
+        // Bind Param Events
+        const handlerD = e => this.updateD(parseFloat(e.target.value));
+        this.el.inputD.addEventListener('input', handlerD);
+        this.el.sliderD.addEventListener('input', handlerD);
+        
+        const handlerA = e => this.updateA(parseFloat(e.target.value));
+        this.el.inputA.addEventListener('input', handlerA);
+        this.el.sliderA.addEventListener('input', handlerA);
+        
+        // Bind Trade Events
+        this.el.inputTrade.addEventListener('input', e => this.updateTrade(parseFloat(e.target.value), false));
+        this.el.sliderTrade.addEventListener('input', e => this.updateTrade(parseFloat(e.target.value), true));
+        
+        Graph.init();
+        this.recalc();
+    },
+
+    updateD(val) {
+        if (isNaN(val) || val < 1) return;
+        App.state.D = val;
+        App.state.initX = val / 2;
+        
+        this.el.inputD.value = val;
+        this.el.sliderD.value = val;
+        
+        // Set Visual Range for Slider (Limit Buy to ~99%, Allow Sell infinite)
+        const rangeX = App.state.initX; 
+        this.el.sliderTrade.min = -rangeX + 0.1; 
+        this.el.sliderTrade.max = rangeX * 3;
+        
+        this.el.lblBuyMax.innerText = `Max Buy ~${Math.floor(rangeX)}`;
+        this.el.lblSellMax.innerText = `Max Sell ∞`;
+
+        this.recalc();
+        Graph.fit();
+    },
+
+    updateA(val) {
+        if (isNaN(val) || val < 1) return;
+        App.state.A = val;
+        this.el.inputA.value = val;
+        this.el.sliderA.value = val;
+        this.recalc();
+    },
+
+    updateTrade(val, fromSlider) {
+        if (isNaN(val)) val = 0;
+        if (val <= -App.state.initX) val = -App.state.initX + 0.1; // Cap buy at liquidation
+        
+        App.state.tradeDelta = val;
+        
+        if (fromSlider) {
+            this.el.inputTrade.value = val.toFixed(1);
+        } else {
+            // Sync slider only if within bounds
+            if (val >= parseFloat(this.el.sliderTrade.min) && val <= parseFloat(this.el.sliderTrade.max)) {
+                this.el.sliderTrade.value = val;
+            }
+        }
+        this.recalc();
+    },
+
+    resetTrade() { this.updateTrade(0, true); },
+
+    recalc() {
+        const { D, A, tradeDelta, initX } = App.state;
+        const basePeg = 0.287;
+
+        const X = initX + tradeDelta;
+        App.state.X = X;
+        const Y = MathCore.solveY(X, A, D);
+        App.state.Y = Y;
+        const price = MathCore.getSpotPrice(X, Y, A, D, basePeg);
+
+        this.el.price.innerText = price.toFixed(4);
+        const diff = (price - basePeg) / basePeg;
+        const slipEl = this.el.slip;
+        slipEl.innerText = (diff > 0 ? "+" : "") + (diff * 100).toFixed(2) + "%";
+        slipEl.style.color = Math.abs(diff) > 0.01 ? "#ef4444" : "#10b981";
+
+        this.renderSentence(tradeDelta, X, Y, price);
+        Graph.draw();
+    },
+
+    renderSentence(delta, X, Y, price) {
+        const el = this.el.tradeText;
+        const abs = Math.abs(delta);
+        const fmtDelta = abs.toLocaleString(undefined, {maximumFractionDigits:1});
+        const fmtX = X.toLocaleString(undefined, {maximumFractionDigits:0});
+        const fmtY = Y.toLocaleString(undefined, {maximumFractionDigits:0});
+        const fmtP = price.toFixed(4);
+
+        if (abs < 0.1) {
+            el.innerHTML = `<span class="t-neutral">Market Equilibrium.<br>Pool is balanced.</span>`;
+            return;
+        }
+
+        const action = delta > 0 ? `<span class="t-sell">Selling</span>` : `<span class="t-buy">Buying</span>`;
+        el.innerHTML = `You are ${action} ${fmtDelta} ElecTokens at ~${fmtP} RM/kWh.<br>
+                        Pool: <span class="t-val">${fmtX}</span> ElecTokens | <span class="t-val">${fmtY}</span> MyrTokens`;
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => UI.init());
+</script>
 </body>
-
-
 </html>
